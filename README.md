@@ -1,1 +1,1 @@
-Correlation between Netflix growth with GDP and Social inequality.
+# Correlation between Netflix growth with GDP and Social inequality.
