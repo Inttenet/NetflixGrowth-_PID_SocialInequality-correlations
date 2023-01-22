@@ -33,6 +33,9 @@ sub_data <- read.csv("datasets_originais/assinantes_netflix_jul_2021.csv")
 #ISO code from each country 
 ISOCODE_data <- read.csv("datasets_originais/wikipedia-iso-country-codes.csv")
 
+
+
+
 ### DATASET CLEANING AND PREPARATION ### 
 #Columns creating related to the difference between packages (standart - basic)
 netflix_data$standard_basic_diff <- (netflix_data$Cost.Per.Month...Standard.... - netflix_data$Cost.Per.Month...Basic....)
@@ -67,6 +70,9 @@ complete <- merge(complete, ISOCODE_data, by.x=c("Country"), by.y = c("English.s
 #Saving "complete" dataframe
 write.csv(complete, "datasets_finais/dataset1.csv")
 
+
+
+
 ### Cleaning and filtering "complete" dataframe ###
 gender <- IMDB_data[, -c(1,4:8)]
 names(gender)[names(gender)=="primaryTitle"] <- "show_title" 
@@ -77,16 +83,13 @@ topgender <- merge(TOP10_data, gender, by="show_title")
 #Cleaninng previous dataframe in order to maintain one input for each top10:
 topgender <- topgender[(topgender$category =="Films" & topgender$titleType=='movie') | (topgender$category == "TV" & topgender$titleType=='tvSeries'), ]
 topgender <- distinct(topgender, show_title, week, country_name, category, titleType, cumulative_weeks_in_top_10, .keep_all = TRUE)
-View(topgender)
 
 #Maintain only movie gender information per country:
 top_gender_country_data <- topgender[, -c(1, 3:9)]
-View(top_gender_country_data)
 
 #Dataframe pivot:
 top_gender_country_data <- separate(top_gender_country_data,c("genres"), c("genero1","genero2","genero3"), sep=",")
 top_gender_country_data <- pivot_longer(top_gender_country_data, c("genero1","genero2","genero3"), names_to = "genero123", values_to = "genres")
-View(top_gender_country_data)
 
 #Counting genres types:
 genrercount <- count(top_gender_country_data, country_name, genres)
@@ -97,6 +100,8 @@ genrercount <- subset(genrercount, genres!="\\N")
 write.csv(genrercount, "datasets_finais/dataset2.csv", row.names = FALSE)
 
 
+
+
 ### Cleaning and preparation for third combined dataset ###
 #Renaming previous dataframe:
 sunburst <- rename(genrercount, label=country_name)
@@ -105,9 +110,92 @@ sunburst <- rename(genrercount, label=country_name)
 sunburst$genres = sub("-", " ", sunburst$genres)
 
 #Adjusting name:
-sunburst$parent = c("total  - ")
+sunburst$parent = c("total - ")
 sunburst$parent <- paste(sunburst$parent, sunburst$genres)
 sunburst$id = c(" - ")
 sunburst$id <- paste(sunburst$parent, sunburst$id)
 sunburst$id <- paste(sunburst$id, sunburst$label)
 sunburst$n <- as.numeric(sunburst$n)
+
+#Agregation 
+added <- aggregate(sunburst$n, list(sunburst$genres), FUN= sum)
+added <- rename(added, label = Group.1)
+added <- rename(added, n = x)
+added$n <-as.numeric(added$n)
+added$genres <- c(NA)
+added$parent <- c("total")
+added$id <- c(" - ")
+added$id <- paste(added$parent, added$id, added$label)
+
+#calculating total:
+total =sum(added$n)
+total
+
+#Matching everything for final dataframe:
+sunburst <- rbind(added, sunburst)
+sunburst <- rbind(c("total", total, NA, NA, "total"), sunburst)
+sunburst <- sunburst[, -c(3)]
+sunburst$n <- as.numeric(sunburst$n)
+
+#Saving dataframe
+write.csv(sunburst, "datasets_finais/dataset3.csv", row.names = FALSE)
+
+
+
+### Cleaning and preparation of the fourth combined dataset ###
+#Working with top 10 avoiding future performance problems of the graphics
+top10sunburst <- sunburst[-c(1:28),]
+top10sunburst$n <- as.numeric(top10sunburst$n)
+
+#Top 10 genrer per country
+top10sunburst <- top10sunburst %>% group_by(label) %>% top_n(10,n)
+View(top10sunburst)
+
+#Recalculating totals, adjusting and matching dataframe
+top10add <- aggregate(top10sunburst$n, list(top10sunburst$parent), FUN=sum)
+top10add <- rename(top10add, id = Group.1)
+top10add <- rename(top10add, n=x)
+top10add$label = sub("total - ", "", top10add$id)
+top10add$parent = c("total")
+top10add$n <- as.numeric(top10add$n)
+total = sum(top10add$n)
+top10sunburst <- rbind(top10add, top10sunburst)
+top10sunburst <- rbind(c("total",total,NA,NA,"total"), top10sunburst)
+top10sunburst$n <- as.numeric(top10sunburst$n)
+View(top10sunburst)
+
+#Saving dataframe
+write.csv(top10sunburst,"datasets_finais/dataset4.csv",row.names = FALSE)
+
+
+
+### Cleaning and preparation of fifth dataset ###
+#Filtering previous dataset and creating another one
+nototal <- sunburst[-c(1),]
+nototal$parent = sub("total - ", "", nototal$parent)
+nototal$parent = sub("total", NA, nototal$parent)
+nototal$id = sub("total - ","",nototal$id)
+
+#Saving dataframe
+write.csv(top10sunburst,"datasets_finais/dataset5.csv",row.names = FALSE)
+
+
+
+### Cleaning and preparation of sixth dataset ###
+#Filtering previous dataset and creating another one
+countrytree <- nototal[-c(1:28),]
+countrytree <- rename(countrytree, parents = label)
+countrytree <- rename(countrytree, labels = parent)
+countrytree$id = c(" - ")
+countrytree$id <- paste(countrytree$parent, countrytree$id)
+countrytree$id <- paste(countrytree$id, countrytree$label)
+countries <- aggregate(countrytree$n, list(countrytree$parents), FUN = sum)
+countries <- rename(countries, labels = Group.1)
+countries <- rename(countries, n = x)
+countries$n <- as.numeric(countries$n)
+countries$id <- countries$label
+countries$parents <- c(NA)
+countrytree <- rbind(countrytree, countries)
+
+#Saving dataframe
+write.csv(top10sunburst,"datasets_finais/dataset6.csv",row.names = FALSE)
