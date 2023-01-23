@@ -1,5 +1,5 @@
 # Netflix revenues, GDP and Social inequality.
-Cleaning, organizing and combining datadifferent sources, build an analytical dashboard web app (R Shiny) to understand the relationship between Netflix revenues, GDP and indicators of social inequality in each country where Netflix operates.
+Cleaning, organizing and combining data from ifferent sources, build an analytical dashboard web app (R Shiny) to understand the relationship between Netflix revenues, GDP and indicators of social inequality in each country where Netflix operates.
 
 ## Autores
 - [@inttenet]
